@@ -2,7 +2,8 @@
 # import external libraries
 import vlc
 import sys
-
+import subprocess
+import ffmpy
 if sys.version_info[0] < 3:
     import Tkinter as Tk
     from Tkinter import ttk
@@ -35,7 +36,6 @@ class ttkTimer(Thread):
             self.iters += 1
             self.callback()
             #print("ttkTimer start")
-
     def stop(self):
         self.stopFlag.set()
 
@@ -143,10 +143,12 @@ class Player(Tk.Frame):
         p = pathlib.Path(os.path.expanduser("~"))
         fullname =  askopenfilename(initialdir = p, title = "choose your file",filetypes = (("all files","*.*"),("mp4 files","*.mp4")))
         if os.path.isfile(fullname):
-            print (fullname)
             splt = os.path.split(fullname)
             dirname  = os.path.dirname(fullname)
             filename = os.path.basename(fullname)
+            self.dirname  = os.path.dirname(fullname)
+            self.filename = os.path.basename(fullname)
+
             # Creation
             self.Media = self.Instance.media_new(str(os.path.join(dirname, filename)))
             self.player.set_media(self.Media)
@@ -190,6 +192,9 @@ class Player(Tk.Frame):
     def OnPause(self):
         """Pause the player.
         """
+        self.frameref = float(self.timeslider_last_val) * 30
+        #Assuming 30 hz camera
+        print(self.frameref)
         self.player.pause()
 
     def OnStop(self):
@@ -207,7 +212,15 @@ class Player(Tk.Frame):
         # since the self.player.get_length can change while playing,
         # re-set the timeslider to the correct range.
         length = self.player.get_length()
+        if length <=0:
+            print('scoping')
+        else:
+            ff = ffmpy.FFmpeg(
+                inputs={self.filename: "-ss 00:00 -r 30 -t "+str(length)},
+                outputs={self.filename[:-4]+'_%03d.jpg':None})
+            print(ff.cmd)
         dbl = length * 0.001
+        sedbl = length * 0.001
         self.timeslider.config(to=dbl)
 
         # update the time on the slider
@@ -216,6 +229,7 @@ class Player(Tk.Frame):
             tyme = 0
         dbl = tyme * 0.001
         self.timeslider_last_val = ("%.0f" % dbl) + ".0"
+        #print(self.timeslider_last_val)
         # don't want to programatically change slider while user is messing with it.
         # wait 2 seconds after user lets go of slider
         if time.time() > (self.timeslider_last_update + 2.0):
@@ -227,21 +241,6 @@ class Player(Tk.Frame):
         nval = self.scale_var.get()
         sval = str(nval)
         if self.timeslider_last_val != sval:
-            # this is a hack. The timer updates the time slider.
-            # This change causes this rtn (the 'slider has changed' rtn) to be invoked.
-            # I can't tell the difference between when the user has manually moved the slider and when
-            # the timer changed the slider. But when the user moves the slider tkinter only notifies
-            # this rtn about once per second and when the slider has quit moving.
-            # Also, the tkinter notification value has no fractional seconds.
-            # The timer update rtn saves off the last update value (rounded to integer seconds) in timeslider_last_val
-            # if the notification time (sval) is the same as the last saved time timeslider_last_val then
-            # we know that this notification is due to the timer changing the slider.
-            # otherwise the notification is due to the user changing the slider.
-            # if the user is changing the slider then I have the timer routine wait for at least
-            # 2 seconds before it starts updating the slider again (so the timer doesn't start fighting with the
-            # user)
-            #selection = "Value, last = " + sval + " " + str(self.timeslider_last_val)
-            #print("selection= ", selection)
             self.timeslider_last_update = time.time()
             mval = "%.0f" % (nval * 1000)
             self.player.set_time(int(mval)) # expects milliseconds

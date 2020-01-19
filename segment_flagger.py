@@ -75,7 +75,7 @@ class segment_main_page:
             master.title("FLIR_SEGMENT_FLAGGER")
             master.iconbitmap('flam.ico')
             #os.chdir(self.dirname)
-            #subprocess.call("ffmpeg -i "+self.file+" -ss 00:00 -r 30 -t "+str(self.filelength)+" "+self.filehead+"_%03d.jpg",shell=True)
+            subprocess.call("ffmpeg -i "+self.file+" -ss 00:00 -r 30 -t "+str(self.filelength)+" "+self.filehead+"_%03d.jpg",shell=True)
             #self.play_button = Button(master, text = "Play", command = self.Play, bg = 'navy blue', fg = 'white')
             #self.play_button.place(x=0,y=0)
             self.canvas = Canvas(master, width = self.filewidth, height = self.fileheight, bg = 'navy blue' )
