@@ -4,6 +4,11 @@ import vlc
 import sys
 import subprocess
 import ffmpy
+import re
+import gc
+import cv2
+import json
+
 if sys.version_info[0] < 3:
     import Tkinter as Tk
     from Tkinter import ttk
@@ -19,6 +24,19 @@ import pathlib
 from threading import Timer,Thread,Event
 import time
 import platform
+
+class frameflagger(Tk.Frame):
+    def __init__(self,master,frameref,max):
+        Tk.Frame.__init__(self, master)
+        self.master = master
+        self.frameref = frameref
+        self.max = max
+        print(self.frameref)
+        print(self.max)
+        master.iconbitmap('flam.ico')
+        master.title("FLIR_SEGMENT_FLAGGER")
+        self.videopane2 = ttk.Frame(self.master)
+        self.canvas1 = Tk.Canvas(self.videopane2,bg='navy').pack(fill=Tk.BOTH,expand=1)
 
 class ttkTimer(Thread):
     """a class serving same function as wxTimer... but there may be better ways to do this
@@ -87,13 +105,16 @@ class Player(Tk.Frame):
 
         ctrlpanel = ttk.Frame(self.parent)
         pause  = ttk.Button(ctrlpanel, text="Pause", command=self.OnPause)
+        flag = ttk.Button(ctrlpanel, text="Flag", command= lambda: [f() for f in [self.OnPause, self.OnFlag]])
         play   = ttk.Button(ctrlpanel, text="Play", command=self.OnPlay)
         stop   = ttk.Button(ctrlpanel, text="Stop", command=self.OnStop)
         volume = ttk.Button(ctrlpanel, text="Volume", command=self.OnSetVolume)
         pause.pack(side=Tk.LEFT)
         play.pack(side=Tk.LEFT)
         stop.pack(side=Tk.LEFT)
+        flag.pack(side = Tk.LEFT)
         volume.pack(side=Tk.LEFT)
+
         self.volume_var = Tk.IntVar()
         self.volslider = Tk.Scale(ctrlpanel, variable=self.volume_var, command=self.volume_sel,
                 from_=0, to=100, orient=Tk.HORIZONTAL, length=100)
@@ -131,6 +152,31 @@ class Player(Tk.Frame):
         """Closes the window.
         """
         self.Close()
+    def OnFlag(self):
+        length = self.player.get_length()
+        if length <=0:
+            print('scoping')
+        if length > 0:
+            self.originaldir = os.getcwd()
+            self.datalist = []
+            ff = ffmpy.FFmpeg(
+                inputs={self.filename: "-ss 00:00 -r 30 -t "+str(length)},
+                outputs={self.filename[:-4]+'_%03d.jpg':None})
+            os.chdir(self.dirname)
+            ff.run()
+            for image in os.listdir(os.getcwd()):
+                if image.endswith('.jpg'):
+                    image = re.split('_|\\.',image)
+                    for i in image:
+                        if not i.isnumeric():
+                            image.remove(i)
+                    self.datalist.append(int(image[0]))
+            os.chdir(self.originaldir)
+            self.max = max(self.datalist)
+            gc.disable()
+            Frame1 = Tk.Toplevel()
+            open_images = frameflagger(Frame1,self.frameref,self.max)
+
 
     def OnOpen(self):
         """Pop up a new dialow window to choose a file, then play the selected file.
@@ -192,10 +238,10 @@ class Player(Tk.Frame):
     def OnPause(self):
         """Pause the player.
         """
-        self.frameref = float(self.timeslider_last_val) * 30
-        #Assuming 30 hz camera
-        print(self.frameref)
         self.player.pause()
+        time.sleep(1)
+        self.frameref = float(self.timeslider_last_val) * 30
+
 
     def OnStop(self):
         """Stop the player.
@@ -203,6 +249,7 @@ class Player(Tk.Frame):
         self.player.stop()
         # reset the time slider
         self.timeslider.set(0)
+
 
     def OnTimer(self):
         """Update the time slider according to the current movie time.
@@ -212,13 +259,6 @@ class Player(Tk.Frame):
         # since the self.player.get_length can change while playing,
         # re-set the timeslider to the correct range.
         length = self.player.get_length()
-        if length <=0:
-            print('scoping')
-        else:
-            ff = ffmpy.FFmpeg(
-                inputs={self.filename: "-ss 00:00 -r 30 -t "+str(length)},
-                outputs={self.filename[:-4]+'_%03d.jpg':None})
-            print(ff.cmd)
         dbl = length * 0.001
         sedbl = length * 0.001
         self.timeslider.config(to=dbl)
