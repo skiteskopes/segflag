@@ -38,6 +38,8 @@ class frameflagger(Tk.Frame):
         if self.frameref > max:
             self.frameref = max
         self.flag_button = Button(self.canvas1, text= "Flag Start", command = lambda: self.Flag(self.flag_button,self.index), bg= 'green', fg='white')
+        self.next_button = Button(self.canvas1, text = "Next", command = self.Next, bg ='navy', fg='white')
+        self.back_button = Button(self.canvas1, text="Back", command = self.Back, bg= 'navy', fg='white')
     def Next(self):
         self.frameref += 1
         if self.frameref >= max:
@@ -45,7 +47,7 @@ class frameflagger(Tk.Frame):
     def Back(self):
         self.frameref -= 1
         if self.frameref < 1:
-            self.frameref = 1  
+            self.frameref = 1
     def Flag(self,flag_button,index):
         print('flag')
         print(index)
