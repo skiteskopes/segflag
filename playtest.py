@@ -8,7 +8,7 @@ import re
 import gc
 import cv2
 import json
-
+global flag_list
 if sys.version_info[0] < 3:
     import Tkinter as Tk
     from Tkinter import ttk
@@ -24,19 +24,39 @@ import pathlib
 from threading import Timer,Thread,Event
 import time
 import platform
-
+flag_list = []
 class frameflagger(Tk.Frame):
-    def __init__(self,master,frameref,max):
+    def __init__(self,master,frameref,max,dirname,filename,originaldir):
         Tk.Frame.__init__(self, master)
-        self.master = master
+        print(frameref,max,dirname,filename,originaldir)
         self.frameref = frameref
-        self.max = max
-        print(self.frameref)
-        print(self.max)
         master.iconbitmap('flam.ico')
         master.title("FLIR_SEGMENT_FLAGGER")
         self.videopane2 = ttk.Frame(self.master)
         self.canvas1 = Tk.Canvas(self.videopane2,bg='navy').pack(fill=Tk.BOTH,expand=1)
+        self.index = 1
+        if self.frameref > max:
+            self.frameref = max
+        self.flag_button = Button(self.canvas1, text= "Flag Start", command = lambda: self.Flag(self.flag_button,self.index), bg= 'green', fg='white')
+    def Next(self):
+        self.frameref += 1
+        if self.frameref >= max:
+            self.frameref = max
+    def Back(self):
+        self.frameref -= 1
+        if self.frameref < 1:
+            self.frameref = 1  
+    def Flag(self,flag_button,index):
+        print('flag')
+        print(index)
+        if self.index:
+            self.flag_button.config( background='red',text='Flag End')
+
+        else:
+            self.flag_button.config(bg= 'green',text='Flag Start')
+
+        self.index = not self.index
+
 
 class ttkTimer(Thread):
     """a class serving same function as wxTimer... but there may be better ways to do this
@@ -175,7 +195,9 @@ class Player(Tk.Frame):
             self.max = max(self.datalist)
             gc.disable()
             Frame1 = Tk.Toplevel()
-            open_images = frameflagger(Frame1,self.frameref,self.max)
+            open_images = frameflagger(Frame1,self.frameref,self.max,self.dirname,self.filename,self.originaldir)
+
+
 
 
     def OnOpen(self):
