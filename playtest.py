@@ -29,6 +29,7 @@ import time
 import platform
 flag_list = []
 class frameflagger(Tk.Frame):
+    global flag_list
     def __init__(self,master,frameref,max,dirname,filename,originaldir):
         Tk.Frame.__init__(self, master)
         os.chdir(originaldir)
@@ -36,6 +37,7 @@ class frameflagger(Tk.Frame):
         self.frameref = int(frameref)
         self.max = max
         self.dirname = dirname
+        self.originaldir = originaldir
         master.iconbitmap('flam.ico')
         master.title("FLIR_SEGMENT_FLAGGER")
         ctrlpanel = ttk.Frame(self.master)
@@ -51,7 +53,7 @@ class frameflagger(Tk.Frame):
         next_button = Tk.Button(ctrlpanel, text = "Next", command = self.Next)
         back_button = Tk.Button(ctrlpanel, text="Back", command = self.Back)
         self.flag_button = Tk.Button(ctrlpanel, text= "Flag Start", bg='green', command = lambda: self.Flag(self.flag_button,self.index))
-        output_json_button = Tk.Button(ctrlpanel, text = 'Output JSON', bg = 'yellow', command = self.output(self.filename))
+        output_json_button = Tk.Button(ctrlpanel, text = 'Output JSON', bg = 'yellow', command =lambda: self.outputjson(self.filename))
         self.flag_button.pack(side=Tk.LEFT)
         next_button.pack(side=Tk.LEFT)
         back_button.pack(side=Tk.LEFT)
@@ -75,6 +77,7 @@ class frameflagger(Tk.Frame):
         self.change()
         print(self.frameref)
     def Flag(self,flag_button,index):
+        global flag_list
         print('flag')
         print(index)
         if self.index:
@@ -89,10 +92,14 @@ class frameflagger(Tk.Frame):
             print('end:'+str(self.end))
 
         self.index = not self.index
-    def output(self,filename):
+    def outputjson(self,filename):
+        global flag_list
+        os.chdir(self.dirname)
         with open(filename+'_data.json', 'w') as f:
             json.dump(flag_list, f)
         print('outputting json')
+        os.chdir(self.originaldir)
+
     def change(self):
         print('changing')
         if self.frameref < 100:
