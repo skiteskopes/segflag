@@ -9,6 +9,9 @@ import gc
 import cv2
 import json
 global flag_list
+import shutil
+import PIL.Image, PIL.ImageTk
+import numpy as np
 if sys.version_info[0] < 3:
     import Tkinter as Tk
     from Tkinter import ttk
@@ -28,37 +31,80 @@ flag_list = []
 class frameflagger(Tk.Frame):
     def __init__(self,master,frameref,max,dirname,filename,originaldir):
         Tk.Frame.__init__(self, master)
+        os.chdir(originaldir)
         print(frameref,max,dirname,filename,originaldir)
-        self.frameref = frameref
+        self.frameref = int(frameref)
+        self.max = max
+        self.dirname = dirname
         master.iconbitmap('flam.ico')
         master.title("FLIR_SEGMENT_FLAGGER")
-        self.videopane2 = ttk.Frame(self.master)
-        self.canvas1 = Tk.Canvas(self.videopane2,bg='navy').pack(fill=Tk.BOTH,expand=1)
+        ctrlpanel = ttk.Frame(self.master)
+        self.imagepanel = ttk.Frame(self.master)
+        self.imagepanel1 = Tk.Canvas(self.imagepanel,bg='Navy')
+        master.geometry('1920x1080')
+
+        self.filename = filename[:-4]
         self.index = 1
         if self.frameref > max:
             self.frameref = max
-        self.flag_button = Button(self.canvas1, text= "Flag Start", command = lambda: self.Flag(self.flag_button,self.index), bg= 'green', fg='white')
-        self.next_button = Button(self.canvas1, text = "Next", command = self.Next, bg ='navy', fg='white')
-        self.back_button = Button(self.canvas1, text="Back", command = self.Back, bg= 'navy', fg='white')
+        self.change()
+        next_button = Tk.Button(ctrlpanel, text = "Next", command = self.Next)
+        back_button = Tk.Button(ctrlpanel, text="Back", command = self.Back)
+        self.flag_button = Tk.Button(ctrlpanel, text= "Flag Start", bg='green', command = lambda: self.Flag(self.flag_button,self.index))
+        output_json_button = Tk.Button(ctrlpanel, text = 'Output JSON', bg = 'yellow', command = self.output(self.filename))
+        self.flag_button.pack(side=Tk.LEFT)
+        next_button.pack(side=Tk.LEFT)
+        back_button.pack(side=Tk.LEFT)
+        output_json_button.pack(side=Tk.LEFT)
+        ctrlpanel.pack(side=Tk.TOP)
+        self.imagepanel.pack(fill=Tk.BOTH,expand=1)
+        self.imagepanel1.pack(fill=Tk.BOTH,expand= 1)
+
     def Next(self):
+        self.frameref=int(self.frameref)
         self.frameref += 1
-        if self.frameref >= max:
-            self.frameref = max
+        if self.frameref >= self.max:
+            self.frameref = self.max
+        self.change()
+        print(self.frameref)
     def Back(self):
+        self.frameref = int(self.frameref)
         self.frameref -= 1
         if self.frameref < 1:
             self.frameref = 1
+        self.change()
+        print(self.frameref)
     def Flag(self,flag_button,index):
         print('flag')
         print(index)
         if self.index:
-            self.flag_button.config( background='red',text='Flag End')
+            self.flag_button.config(bg='red',text='Flag End')
+            self.start = int(self.frameref)
+            print('start:'+str(self.start))
 
         else:
             self.flag_button.config(bg= 'green',text='Flag Start')
+            self.end = int(self.frameref)
+            flag_list.append([self.start,self.end])
+            print('end:'+str(self.end))
 
         self.index = not self.index
-
+    def output(self,filename):
+        with open(filename+'_data.json', 'w') as f:
+            json.dump(flag_list, f)
+        print('outputting json')
+    def change(self):
+        print('changing')
+        if self.frameref < 100:
+            self.frameref = "0"+str(self.frameref)
+        else:
+            self.frameref = str(self.frameref)
+        #print(self.dirname+"/"+self.filename+"_"+self.frameref+".jpg")
+        self.rgb_img = cv2.imread(self.dirname+"/"+self.filename+"_"+self.frameref+".JPG")
+        self.rgb_img = cv2.cvtColor(self.rgb_img,cv2.COLOR_BGR2RGB)
+        self.rgbimage = PIL.Image.fromarray(self.rgb_img)
+        self.photo = PIL.ImageTk.PhotoImage(self.rgbimage)
+        self.imagepanel1.create_image(960,540,image=self.photo)
 
 class ttkTimer(Thread):
     """a class serving same function as wxTimer... but there may be better ways to do this
@@ -263,7 +309,7 @@ class Player(Tk.Frame):
         """Pause the player.
         """
         self.player.pause()
-        time.sleep(1)
+        time.sleep(2)
         self.frameref = float(self.timeslider_last_val) * 30
 
 
@@ -273,7 +319,8 @@ class Player(Tk.Frame):
         self.player.stop()
         # reset the time slider
         self.timeslider.set(0)
-
+        #with open(filename[:-4]+'_data.json', 'w') as f:
+            #json.dump(flag_list, f)
 
     def OnTimer(self):
         """Update the time slider according to the current movie time.
