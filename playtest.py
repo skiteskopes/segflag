@@ -33,6 +33,8 @@ class frameflagger(Tk.Frame):
     def __init__(self,master,frameref,max,dirname,filename,originaldir):
         Tk.Frame.__init__(self, master)
         os.chdir(originaldir)
+        master.bind("<Right>",self.next_key)
+        master.bind("<Left>",self.back_key)
         print(frameref,max,dirname,filename,originaldir)
         self.frameref = int(frameref)
         self.max = max
@@ -44,14 +46,13 @@ class frameflagger(Tk.Frame):
         self.imagepanel = ttk.Frame(self.master)
         self.imagepanel1 = Tk.Canvas(self.imagepanel,bg='Navy')
         master.geometry('1920x1080')
-
         self.filename = filename[:-4]
         self.index = 1
         if self.frameref > max:
             self.frameref = max
         self.change()
-        next_button = Tk.Button(ctrlpanel, text = "Next", command = self.Next)
-        back_button = Tk.Button(ctrlpanel, text="Back", command = self.Back)
+        next_button = Tk.Button(ctrlpanel, text = "Next", command = self.next_key)
+        back_button = Tk.Button(ctrlpanel, text="Back", command = self.back_key)
         self.flag_button = Tk.Button(ctrlpanel, text= "Flag Start", bg='green', command = lambda: self.Flag(self.flag_button,self.index))
         output_json_button = Tk.Button(ctrlpanel, text = 'Output JSON', bg = 'yellow', command =lambda: self.outputjson(self.filename))
         self.flag_button.pack(side=Tk.LEFT)
@@ -61,6 +62,10 @@ class frameflagger(Tk.Frame):
         ctrlpanel.pack(side=Tk.TOP)
         self.imagepanel.pack(fill=Tk.BOTH,expand=1)
         self.imagepanel1.pack(fill=Tk.BOTH,expand= 1)
+    def next_key(self,event):
+        self.Next()
+    def back_key(self,event):
+        self.Back()
 
     def Next(self):
         self.frameref=int(self.frameref)
